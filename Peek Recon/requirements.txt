@@ -1,0 +1,5 @@
+dnspython
+python-whois
+requests
+rich
+shodan
