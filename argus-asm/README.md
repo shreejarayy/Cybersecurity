@@ -51,7 +51,7 @@ The name comes from Argus Panoptes — the 100-eyed giant from Greek mythology w
 
 ## Commit log
 
-Each entry below is one commit. Update the status column as you push.
+Each entry below is one commit. I will update the status column as I push.
 
 ---
 
@@ -63,7 +63,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** Created the folder layout (`recon/`, `db/`, `config/`), added `.gitignore`, `README.md`, and empty `__init__.py` files.
 **Why it matters:** Every repo needs a clean starting point before any real code goes in. This commit just sets the skeleton.
 **Files touched:** `recon/__init__.py`, `db/__init__.py`, `config/__init__.py`, `.gitignore`, `README.md`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -71,7 +71,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** `recon/dns_enum.py` — queries A, MX, NS, TXT, AAAA, and CNAME records for a target domain using `dnspython`. Returns a structured dict.
 **Why it matters:** DNS records are the first thing any attacker or researcher looks up. They reveal mail servers, name servers, IP addresses, and SPF/DMARC config. This is the entry point of any recon run.
 **Files touched:** `recon/dns_enum.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -79,7 +79,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** `recon/subdomain_brute.py` — takes a wordlist and tries resolving every word as a subdomain (e.g. `admin.example.com`). Uses 20 concurrent DNS workers so it doesn't take forever. Falls back to a built-in 20-word list if no wordlist is supplied.
 **Why it matters:** Subdomains like `staging.company.com` or `dev.company.com` are often forgotten and left insecure. This module finds them.
 **Files touched:** `recon/subdomain_brute.py`, `recon/wordlists/subdomains-500.txt`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -87,7 +87,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** `recon/port_scan.py` — scans the top-1000 TCP ports using full connect (no root required). Runs 150 threads simultaneously. Maps common ports to service names (SSH, HTTP, MySQL, etc.).
 **Why it matters:** Open ports are open doors. Port 3306 open to the internet means someone left MySQL exposed. This module finds every open door.
 **Files touched:** `recon/port_scan.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -95,7 +95,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** `recon/whois_lookup.py` — pulls registrar, organisation name, country, creation/expiry dates, name servers, and contact emails for a domain.
 **Why it matters:** WHOIS tells you who owns the domain, when it expires (expiring domains can be hijacked), and often leaks internal org info. It's free public data and always worth collecting.
 **Files touched:** `recon/whois_lookup.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -103,7 +103,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** `recon/banner_grab.py` — for HTTP/HTTPS ports it sends a HEAD request and captures response headers (Server, X-Powered-By, etc.). For other ports it opens a raw TCP connection and reads the first 1024 bytes. For HTTPS it also extracts TLS certificate details.
 **Why it matters:** Banners reveal exact software versions — `Apache/2.2.34` or `OpenSSH_7.4`. These version strings are directly searchable in CVE databases. This module is what feeds the AI layer later.
 **Files touched:** `recon/banner_grab.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -111,7 +111,7 @@ Each entry below is one commit. Update the status column as you push.
 **What changed:** `recon/runner.py` — wires all modules together. Runs DNS, subdomains, ports, and WHOIS in parallel using `ThreadPoolExecutor`. Then runs banner grabbing on the open ports returned by the port scanner.
 **Why it matters:** Without a runner, each module has to be called manually. This makes the whole recon pipeline a single function call: `run_all("example.com")`.
 **Files touched:** `recon/runner.py`, `recon/__init__.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
