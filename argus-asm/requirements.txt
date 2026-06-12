@@ -1,0 +1,41 @@
+# Argus ASM — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ------------------------------------------------------------------ #
+# Recon modules
+# ------------------------------------------------------------------ #
+dnspython==2.6.1          # DNS enumeration
+python-whois==0.9.4       # WHOIS lookups
+requests==2.32.3          # HTTP banner grabbing
+urllib3==2.2.2            # HTTP internals (suppress InsecureWarning)
+
+# ------------------------------------------------------------------ #
+# Database
+# ------------------------------------------------------------------ #
+sqlalchemy==2.0.31        # ORM + query builder
+psycopg2-binary==2.9.9    # PostgreSQL driver (binary = no compile needed)
+
+# ------------------------------------------------------------------ #
+# Config
+# ------------------------------------------------------------------ #
+pydantic-settings==2.3.4  # .env loading + validation
+python-dotenv==1.0.1      # .env file support
+
+# ------------------------------------------------------------------ #
+# CLI output
+# ------------------------------------------------------------------ #
+rich==13.7.1              # Formatted terminal tables and panels
+
+# ------------------------------------------------------------------ #
+# Week 2 — add when ready
+# ------------------------------------------------------------------ #
+# celery==5.4.0
+# redis==5.0.7
+# apscheduler==3.10.4
+
+# ------------------------------------------------------------------ #
+# Week 5-7 — add when ready
+# ------------------------------------------------------------------ #
+# scikit-learn==1.5.1
+# sentence-transformers==3.0.1
+# numpy==1.26.4
