@@ -42,7 +42,7 @@ The name comes from Argus Panoptes — the 100-eyed giant from Greek mythology w
 | Phase | What gets built | Status |
 |-------|----------------|--------|
 | Week 1 | Recon pipeline + DB schema | ✅ Done |
-| Week 2 | Change detection + scheduler | 🔲 Planned |
+| Week 2 | Change detection + scheduler | ✅ Done |
 | Week 3–4 | Processing pipeline | 🔲 Planned |
 | Week 5–7 | AI analysis layer | 🔲 Planned |
 | Week 8–9 | Dashboard + REST API | 🔲 Planned |
