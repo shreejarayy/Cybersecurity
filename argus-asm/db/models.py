@@ -37,6 +37,8 @@ class Asset(Base):
 
     ports    = relationship("Port",   back_populates="asset",
                             cascade="all, delete-orphan")
+    changes  = relationship("Change", back_populates="asset",
+                            cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Asset domain={self.domain} ip={self.ip}>"
@@ -96,3 +98,31 @@ class Banner(Base):
 
     def __repr__(self):
         return f"<Banner port_id={self.port_id} type={self.banner_type}>"
+
+
+class Change(Base):
+    """
+    Records a single detected change event for an asset between
+    two consecutive scans. Populated by db/change_detector.py.
+
+    change_type is one of:
+        new_port_opened, port_closed, new_subdomain_found,
+        banner_changed, whois_changed
+    """
+    __tablename__ = "changes"
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    asset_id    = Column(Integer, ForeignKey("assets.id"), nullable=False,
+                         index=True)
+    change_type = Column(String(50), nullable=False, index=True)
+    port        = Column(Integer, nullable=True)
+    detail      = Column(Text, nullable=False)
+    severity    = Column(String(20), default="info")  # info, warning, critical
+    detected_at = Column(DateTime, default=datetime.utcnow, nullable=False,
+                         index=True)
+    acknowledged = Column(Boolean, default=False)
+
+    asset = relationship("Asset", back_populates="changes")
+
+    def __repr__(self):
+        return f"<Change {self.change_type} on asset_id={self.asset_id}>"

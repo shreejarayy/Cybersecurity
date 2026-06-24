@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+
+  # ------------------------------------------------------------------ #
+  # PostgreSQL — stores assets, ports, banners, and detected changes
+  # ------------------------------------------------------------------ #
+  postgres:
+    image: postgres:16-alpine
+    container_name: argus_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: argus
+    ports:
+      - "5432:5432"
+    volumes:
+      - argus_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------------ #
+  # Redis — Celery message broker and result backend
+  # ------------------------------------------------------------------ #
+  redis:
+    image: redis:7-alpine
+    container_name: argus_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------------ #
+  # Celery worker — executes scan tasks queued by the scheduler
+  # ------------------------------------------------------------------ #
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: argus_worker
+    restart: unless-stopped
+    command: celery -A tasks.celery_app worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/argus
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - .:/app
+
+  # ------------------------------------------------------------------ #
+  # Scheduler — triggers scans on a recurring interval
+  # ------------------------------------------------------------------ #
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: argus_scheduler
+    restart: unless-stopped
+    command: python -m tasks.scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/argus
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - .:/app
+
+volumes:
+  argus_pgdata:
