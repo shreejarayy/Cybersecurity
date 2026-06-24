@@ -119,7 +119,7 @@ Each entry below is one commit. I will update the status column as I push.
 **What changed:** `db/models.py` — SQLAlchemy ORM models for `Asset`, `Port`, and `Banner` tables. `db/database.py` — engine setup, session factory, and a `get_db()` context manager.
 **Why it matters:** All recon results need to be stored so they can be compared across scans (change detection in Week 2). Without a database, every scan result disappears when the script ends.
 **Files touched:** `db/models.py`, `db/database.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -127,7 +127,7 @@ Each entry below is one commit. I will update the status column as I push.
 **What changed:** `config/settings.py` — uses `pydantic-settings` to load config from a `.env` file. Variables include `DATABASE_URL`, `SHODAN_API_KEY`, `TARGET_DOMAIN`, and scan settings.
 **Why it matters:** Hardcoding credentials in source code is a security anti-pattern (and embarrassing to push to GitHub). This separates config from code cleanly.
 **Files touched:** `config/settings.py`, `.env.example`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -135,7 +135,7 @@ Each entry below is one commit. I will update the status column as I push.
 **What changed:** `main.py` — accepts a `--target` argument, runs all recon modules via `runner.run_all()`, persists results to the database, and prints a formatted summary table using `rich`.
 **Why it matters:** This is the deliverable for Week 1. Running `python main.py --target example.com` now does the full recon pipeline end to end.
 **Files touched:** `main.py`, `requirements.txt`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -143,7 +143,7 @@ Each entry below is one commit. I will update the status column as I push.
 **What changed:** `requirements.txt` with pinned versions for all dependencies: `dnspython`, `python-whois`, `requests`, `sqlalchemy`, `psycopg2-binary`, `pydantic-settings`, `rich`, `python-dotenv`, `urllib3`.
 **Why it matters:** Without pinned versions, `pip install` can pull different package versions on different machines and break things silently.
 **Files touched:** `requirements.txt`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -155,7 +155,7 @@ Each entry below is one commit. I will update the status column as I push.
 **What changed:** `db/change_detector.py` — compares the latest scan results against the previous scan stored in the database. Flags new assets, newly opened ports, closed ports, and changed banners.
 **Why it matters:** The whole point of ASM is *continuous* monitoring. A single scan is just a snapshot. Change detection is what turns Argus from a one-shot tool into a platform.
 **Files touched:** `db/change_detector.py`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
@@ -163,7 +163,7 @@ Each entry below is one commit. I will update the status column as I push.
 **What changed:** `tasks/scan_tasks.py` — wraps `run_all()` as a Celery task. `tasks/scheduler.py` — APScheduler configuration that kicks off a full scan every 24 hours per target.
 **Why it matters:** Scans need to run on a schedule without someone manually running the script. Celery handles queuing and retries; the scheduler handles timing.
 **Files touched:** `tasks/scan_tasks.py`, `tasks/scheduler.py`, `docker-compose.yml`
-**Status:** 🔲
+**Status:** ✅
 
 ---
 
