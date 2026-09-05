@@ -1,96 +1,128 @@
-# ArgusPredict (argus-asm)
+<h1 align="center">🛰️ ArgusPredict</h1>
 
-**A Predictive Attack Surface Evolution Framework for Proactive Cyber Risk
-Intelligence — using temporal graph modelling and context-aware risk scoring.**
+<p align="center">
+  <b>Keeping an eye on how an attack surface changes over time — and pointing out what actually matters.</b>
+</p>
 
-ArgusPredict continuously and automatically performs *authorised* reconnaissance,
-remembers how an attack surface changes over time, models it as a temporal graph,
-detects structurally unusual changes, and produces a prioritised, **explainable**
-risk ranking — instead of a flat list ordered by raw CVSS.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11+-blue" alt="Python">
+  <img src="https://img.shields.io/badge/Flask-API-red" alt="Flask">
+  <img src="https://img.shields.io/badge/status-student%20project-orange" alt="Status">
+</p>
 
-> ⚠️ **Authorised use only.** ArgusPredict never contacts a host unless it is on
-> the `AUTHORISED_TARGETS` allow-list, and it is observational (no exploitation,
-> no login attempts). Only scan systems you are legally permitted to test.
-> `scanme.nmap.org` is the Nmap Project's public, authorised educational target.
+<p align="center">
+  <img src="docs/dashboard.png" alt="ArgusPredict dashboard" width="900">
+</p>
 
 ---
 
-## Features
+## Hi there 👋
 
-- **Reconnaissance** — five concurrent collectors: DNS, subdomains, TCP ports,
-  service banners, and WHOIS (`argus/recon/`), plus TLS certificate inspection.
-- **Persistence** — every scan stored (SQLAlchemy: Target → Scan → Asset → Port →
-  Banner, and Asset → Change).
-- **Change detection** — typed events: `new_asset`, `new_port`, `closed_port`,
-  `banner_changed`, `new_subdomain`.
-- **Attack Surface Evolution Graph (ASEG)** — NetworkX graph with per-node
-  structural features (centrality, exposure, rarity, propagation).
-- **CVE correlation** — banners matched to NVD CVEs (cached, offline-tolerant).
-- **Anomaly detection** — Isolation Forest over the structural features.
-- **Context-aware risk** — `risk = CVSS × (1 + weighted centrality/exposure/rarity/
-  propagation)`, capped at 10, fully explainable.
-- **Dashboard** — interactive graph with a **current-vs-last-scan diff overlay**,
-  prioritised risk table, evolution timeline, on-demand **scan development sheet**,
-  scan-to-scan compare, scheduled monitoring, high-risk alerts, TLS details, and
-  PDF/CSV export.
-- **Login gate** — optional HTTP Basic auth for safe exposure.
+I'm Shreeja, and this is my M.Sc. project. I built **ArgusPredict** because I kept
+noticing the same thing while learning about security: most tools scan a system
+*once*, hand you a giant list sorted by CVSS score, and leave you to figure out
+what's important. But real systems don't sit still — a port opens after a
+deployment, a forgotten subdomain wakes up, a service quietly updates. I wanted
+something that *remembers* what a system looked like last time and tells me
+**what changed** and **what's actually risky right now**.
 
-## Quick start (local, zero setup)
+So that's what ArgusPredict does. It scans an authorised target, saves the
+result, and every time it runs again it compares against the past — building up a
+picture of how the attack surface is *evolving*.
+
+> ⚠️ **Please only scan things you're allowed to.** ArgusPredict will refuse to
+> touch anything that isn't on its allow-list (`AUTHORISED_TARGETS`), and it only
+> *looks* — it never tries to break in. `scanme.nmap.org` is a target the Nmap
+> Project has made public for exactly this kind of learning.
+
+---
+
+## What it actually does
+
+- 🔎 **Looks around (safely).** Finds DNS records, subdomains, open ports, service
+  banners, WHOIS info, and TLS certificate details — all at the same time, so it's fast.
+- 🧠 **Remembers.** Every scan goes into a database, so it can spot **new ports,
+  closed ports, changed services, and new subdomains** between runs.
+- 🕸️ **Draws the whole thing as a graph** (I call it the Attack Surface Evolution
+  Graph) and can **overlay the current scan on top of the last one** so you *see*
+  what appeared or disappeared.
+- 🎯 **Ranks risk in a smart way.** Instead of just using the raw CVSS score, it
+  asks *"where does this sit and how connected is it?"* and adjusts the score
+  accordingly — so the things that really matter float to the top.
+- 📈 **Shows the story over time** with a live chart and an on-demand
+  "scan development" sheet.
+- 🔔 Flags high-risk changes, ⏱️ can scan on a schedule, and 📄 exports a PDF/CSV report.
+
+<p align="center">
+  <img src="docs/evolution.png" alt="Surface evolution over time" width="900">
+</p>
+
+---
+
+## The clever bit: context-aware risk
+
+Two services can have the exact same CVSS score but be *very* different in real
+life — one might be a lonely test box, the other a central gateway everything
+depends on. So instead of trusting the raw score, ArgusPredict does this:risk = CVSS × (1 + how-central-it-is + how-long-it's-been-exposed
++ how-rare-the-service-is + how-far-a-problem-could-spread)
+
+
+(capped at 10). And it's **explainable** — click any row and it shows you exactly
+why it scored what it did.
+
+---
+
+## Try it yourself
 
 ```bash
 pip install -r requirements.txt
 
-# Fast local scan, no database, no CVE lookup:
+# a safe local test (no internet needed):
 python main.py --target 127.0.0.1 --no-db --no-cve
 
-# Full scan against the authorised Nmap target, stored in SQLite:
+# a real scan of the friendly practice target:
 python main.py --target scanme.nmap.org
 ```
 
-## Dashboard
+Want the dashboard (the pretty part)?
 
 ```bash
-python -m argus.api.app     # then open http://localhost:8050
+python -m argus.api.app
 ```
 
-Type an **authorised** target and click **Run scan**. Scan the same target twice
-(changing something between runs) to see change detection, the timeline, and the
-graph diff overlay come alive.
+Then open **http://localhost:8050**, type an authorised target, and hit **Run
+scan**. Scan the same target twice (change something in between!) and watch the
+graph light up with what changed. 🎉
 
-## Tests
+---
 
-```bash
-pytest -q
-```
+## What it's built with
 
-## Configuration
+Python · Flask · SQLAlchemy · NetworkX · scikit-learn (Isolation Forest) ·
+D3.js + Chart.js for the visuals · Docker for deployment.
 
-All settings come from environment variables (see `.env.example`). Key ones:
+## How the code is organised
 
-| Variable | Purpose |
-|---|---|
-| `AUTHORISED_TARGETS` | Comma-separated allow-list (the safety control) |
-| `DATABASE_URL` | SQLite by default; set to a PostgreSQL URL in production |
-| `APP_PASSWORD` | Set to enable the dashboard login gate (off when empty) |
-| `NVD_API_KEY` | Optional; raises NVD rate limits |
-| `ALERT_THRESHOLD` / `ALERT_WEBHOOK` | High-risk alerting |
-| `PORT_SCAN_THREADS` / `PORT_SCAN_TIMEOUT` | Scan tuning |
-
-## Deployment (Railway / Render)
-
-Both build directly from the included `Dockerfile`.
-
-1. Push to a **private** GitHub repo (`.env` is git-ignored).
-2. Create the service from the repo; add a **PostgreSQL** database.
-3. Set environment variables: `DATABASE_URL`, `APP_PASSWORD`, `AUTHORISED_TARGETS`.
-4. Health check path: `/api/health` (open by design).
-
-> Note: many hosts throttle or prohibit outbound port-scanning. A deployed
-> instance is ideal for the dashboard, history, and reports; run live scans
-> locally.
+argus-asm/
+├── main.py # run a scan from the command line
+├── config.py # settings + the safety allow-list
+├── argus/
+│ ├── pipeline.py # ties one full scan together
+│ ├── recon/ # dns, subdomains, ports, banners, whois, tls
+│ ├── persistence/ # the database models + helpers
+│ ├── detection/ # spots what changed
+│ ├── analysis/ # the graph, anomalies, risk scoring, CVEs
+│ └── api/ # the Flask app + the dashboard
+└── tests/ # a few unit tests
 
 
-## Academic context
+---
 
-Developed as an M.Sc. project. The authorisation allow-list, observational-only
-scanning, and explainable scoring are deliberate security-by-design choices.
+## A little honesty 💬
+
+This is a learning project, and I'm still improving it! The recon, storage,
+change-detection, graph, and dashboard all work end to end. Some parts (like
+fine-tuning the anomaly thresholds) get better the more history it collects.
+If you have ideas or spot something, I'd genuinely love to hear it.
+
+Thanks for reading — and thanks to my guide and everyone who helped along the way. 🙏
