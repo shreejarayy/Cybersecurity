@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>ArgusPredict Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* Red-predominant theme. Base red: #70161E (shared). */
+  :root{
+    --bg:#1A1012; --panel:#241618; --panel2:#2E1B1E; --line:#3E262A;
+    --ink:#F0E6E4; --muted:#B79AA0;
+    --accent:#70161E; --accent2:#9E2530; --accent3:#C0505A;
+    --gold:#ECCE8E; --graph:#150C0E;
+    --low:#8FB0A0; --med:#ECCE8E; --high:#C97B4A; --crit:#70161E; --riskline:#C0505A;
+    --softred:rgba(192,80,90,.12);
+    --tr:.18s ease;
+  }
+  *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--ink)}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:14px 20px;
+         display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0}header h1 span{color:var(--accent3)}
+  .row{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+  input,button,select{font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+    background:#1E1315;color:var(--ink);transition:border-color var(--tr),background var(--tr),
+    box-shadow var(--tr),transform var(--tr)}
+  input:focus,select:focus{outline:none;border-color:var(--accent3);box-shadow:0 0 0 2px var(--softred)}
+  button{background:var(--accent);border:1px solid var(--accent);color:#F6E9EA;font-weight:600;cursor:pointer}
+  button:hover{background:var(--accent2);border-color:var(--accent2);transform:translateY(-1px)}
+  button:active{transform:translateY(0)}
+  button.ghost{background:#1E1315;border:1px solid var(--line);color:var(--ink);font-weight:500}
+  button.ghost:hover{border-color:var(--accent3);background:var(--panel2)}
+  button:disabled{opacity:.5;cursor:default;transform:none}
+  .cards{display:flex;gap:12px;padding:14px 20px 0;flex-wrap:wrap}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;
+    min-width:120px;transition:transform var(--tr),border-color var(--tr),box-shadow var(--tr)}
+  .card:hover{transform:translateY(-2px);border-color:var(--accent3);
+    box-shadow:0 6px 20px rgba(112,22,30,.25)}
+  .card .k{color:var(--muted);font-size:12px}.card .v{font-size:24px;font-weight:700;margin-top:4px}
+  .alertbar{margin:14px 20px 0;padding:12px 16px;border-radius:10px;background:#3A0F14;
+    border:1px solid var(--accent);color:#F3C9CD;font-size:14px;display:none}
+  .alertbar b{color:var(--gold)}
+  main{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;padding:14px 20px 24px}
+  .full{grid-column:1/-1}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .panel h2{font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+            margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .panel h2 .tools{margin-left:auto;display:flex;gap:6px;text-transform:none;letter-spacing:0}
+  svg#graph{width:100%;height:420px;background:var(--graph);border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600}
+  tr.risk-row{cursor:pointer;transition:background var(--tr)}
+  tr.risk-row:hover{background:var(--softred)}
+  .pill{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+  .filter{display:flex;gap:6px;text-transform:none;letter-spacing:0}
+  .filter button{font-size:11px;padding:4px 8px;background:#1E1315;border:1px solid var(--line);
+    color:var(--muted);font-weight:600}
+  .filter button.on{background:var(--accent);color:#F6E9EA;border-color:var(--accent)}
+  .detail{background:var(--graph);font-size:12px}.detail td{padding:10px 12px}
+  .bar{height:8px;border-radius:4px;background:#3E262A;overflow:hidden;margin:3px 0}
+  .bar > i{display:block;height:100%;background:var(--accent3);transition:width .4s ease}
+  .cve{display:inline-block;background:#3A1418;color:#F0B9BD;border:1px solid var(--accent2);
+    border-radius:6px;padding:1px 7px;margin:2px 4px 0 0;font-size:11px}
+  .tls{margin-top:6px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#201416}
+  .feed{max-height:260px;overflow:auto;font-size:13px}
+  .feed .ev{padding:7px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline}
+  .tag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;white-space:nowrap}
+  .tag.new_port,.tag.new_asset,.tag.new_subdomain{background:var(--accent);color:#F6E9EA}
+  .tag.closed_port{background:#5C4A4D;color:#E8DAD9}
+  .tag.banner_changed{background:var(--gold);color:#1F2421}
+  .muted{color:var(--muted)}.anom{color:var(--accent3);font-weight:700}
+  .when{color:var(--muted);font-size:11px;margin-left:auto;white-space:nowrap}
+  canvas{max-height:240px}
+  .sched{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  /* --- Scan development sheet (modal) --- */
+  .backdrop{position:fixed;inset:0;background:rgba(10,5,6,.65);backdrop-filter:blur(2px);
+    display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
+    transition:opacity .22s ease;z-index:50}
+  .backdrop.open{opacity:1;pointer-events:auto}
+  .sheet{width:min(940px,94vw);max-height:86vh;overflow:auto;background:var(--panel);
+    border:1px solid var(--accent2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.55);
+    transform:translateY(16px) scale(.98);transition:transform .22s ease;padding:20px}
+  .backdrop.open .sheet{transform:translateY(0) scale(1)}
+  .sheet h2{margin:0 0 4px;font-size:18px}
+  .sheet h2 span{color:var(--accent3)}
+  .sheet .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+  .sheet .close{position:sticky;top:0;float:right;background:var(--accent);border:none;color:#F6E9EA;
+    width:32px;height:32px;border-radius:8px;font-size:16px;cursor:pointer}
+  .sheet table{font-size:13px}
+  .sheet thead th{position:sticky;top:0;background:var(--panel2);z-index:1}
+  .sheet tbody tr{transition:background var(--tr)}
+  .sheet tbody tr:hover{background:var(--softred)}
+  .sheet td .delta{font-size:11px;margin-left:6px;font-weight:700}
+  .up{color:var(--accent3)}.down{color:var(--low)}.flat{color:var(--muted)}
+  .rk{display:inline-block;min-width:34px;text-align:center;padding:2px 6px;border-radius:14px;
+    font-weight:700;font-size:11px}
+  @media print{header .row,button,.filter{display:none}body{background:#fff;color:#000}
+    .panel,.card{border:1px solid #ccc}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Argus<span>Predict</span> &mdash; Attack Surface Evolution</h1>
+  <div class="row">
+    <select id="targetSelect" title="previously scanned targets"><option value="">— saved targets —</option></select>
+    <input id="target" placeholder="authorised target" value="127.0.0.1" size="18"/>
+    <button id="scan">Run scan</button>
+    <button class="ghost" id="sheetBtn">Scan development</button>
+    <button class="ghost" id="pdf">PDF</button>
+    <button class="ghost" id="csv">CSV</button>
+    <button class="ghost" id="print">Print</button>
+  </div>
+</header>
+
+<div class="alertbar" id="alertbar"></div>
+<div class="cards" id="cards"></div>
+
+<main>
+    <div class="panel">
+    <h2>Attack Surface Evolution Graph
+      <span class="tools" style="align-items:center">
+        <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);cursor:pointer">
+          <input type="checkbox" id="diffToggle" checked style="width:auto;padding:0"> Compare with last scan
+        </label>
+      </span>
+    </h2>
+    <svg id="graph"></svg>
+    <div class="muted" id="graphLegend" style="font-size:12px;margin-top:6px">
+      Node size &prop; risk; colour = severity band. Drag to explore.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Prioritised risk (context-aware)
+      <span class="tools filter" id="sevFilter">
+        <button data-b="all" class="on">All</button>
+        <button data-b="crit">Critical</button>
+        <button data-b="high">High</button>
+        <button data-b="med">Medium</button>
+      </span>
+    </h2>
+    <input id="riskSearch" placeholder="filter by service / port..." style="width:100%;margin-bottom:8px"/>
+    <table id="risk"><thead><tr><th>Risk</th><th>Node</th><th>Service</th>
+      <th>Base</th><th>Anom.</th></tr></thead><tbody></tbody></table>
+    <div class="muted" style="font-size:11px;margin-top:6px">Click a row for score breakdown, CVEs and TLS details.</div>
+  </div>
+
+  <div class="panel full">
+    <h2>Surface evolution over time
+      <span class="tools"><button class="ghost" id="sheetBtn2">Open development sheet</button></span>
+    </h2>
+    <canvas id="trend"></canvas>
+    <div class="muted" style="font-size:12px;margin-top:6px">
+      Open ports, detected changes, and top risk across all stored scans of this target.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Change history</h2>
+    <div class="feed" id="feed"><span class="muted">Run a scan to see changes.</span></div>
+  </div>
+
+  <div class="panel">
+    <h2>Compare two scans</h2>
+    <div class="sched">
+      <select id="scanA"></select><span class="muted">&rarr;</span>
+      <select id="scanB"></select>
+      <button class="ghost" id="diffBtn">Compare</button>
+    </div>
+    <div class="feed" id="diff"><span class="muted">Pick two scans and click Compare.</span></div>
+  </div>
+
+  <div class="panel full">
+    <h2>Scheduled monitoring</h2>
+    <div class="sched">
+      <span class="muted">Scan this target every</span>
+      <input id="schedHours" type="number" step="0.05" min="0.02" value="24" style="width:90px"/>
+      <span class="muted">hours</span>
+      <button id="schedStart">Start</button>
+      <button class="ghost" id="schedStop">Stop</button>
+      <span id="schedStatus" class="muted"></span>
+    </div>
+    <div class="muted" style="font-size:12px">
+      Runs continuously while the server is up. For a quick demo, set a small value like 0.05 (3&nbsp;minutes).
+    </div>
+  </div>
+</main>
+
+<!-- Scan development sheet -->
+<div class="backdrop" id="backdrop">
+  <div class="sheet" id="sheet">
+    <button class="close" id="sheetClose" title="Close">&times;</button>
+    <h2>Scan <span>development</span> over time</h2>
+    <div class="sub" id="sheetSub"></div>
+    <table id="sheetTable">
+      <thead><tr>
+        <th>Scan</th><th>When</th><th>Assets</th><th>Open ports</th>
+        <th>Changes</th><th>Top risk</th><th>Duration</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API="";
+let LAST=null, sevMode="all", trendChart=null;
+function band(v){return v>=9?"crit":v>=7?"high":v>=4?"med":"low";}
+function colour(v){return getComputedStyle(document.documentElement)
+  .getPropertyValue("--"+band(v)).trim();}
+function pillText(v){return (v>=7)?"#F6E9EA":"#1F2421";}
+function fmt(t){
+  if(!t) return "";
+  let s=String(t).trim().replace(" ","T");
+  // stored times are UTC with no marker; tag them so the browser converts correctly
+  if(!/[zZ]|[+\-]\d\d:?\d\d$/.test(s)) s+="Z";
+  const d=new Date(s);
+  return isNaN(d) ? String(t) : d.toLocaleString("en-IN",{timeZone:"Asia/Kolkata"});
+}function curTarget(){return document.getElementById("target").value.trim();}
+
+async function runScan(){
+  const t=curTarget();
+  const btn=document.getElementById("scan");btn.disabled=true;btn.textContent="Scanning...";
+  try{
+    const r=await fetch(API+"/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({target:t})});
+    const data=await r.json();
+    if(!r.ok){alert(data.error||"scan failed");return;}
+    LAST=data; render(data);
+    await Promise.all([loadTrend(t),loadFeed(t),loadScanList(t),loadTargets()]);
+  }catch(e){alert("Request failed: "+e);}
+  finally{btn.disabled=false;btn.textContent="Run scan";}
+}
+
+function render(d){
+  const s=d.summary;
+  document.getElementById("cards").innerHTML=[
+    ["Assets",s.assets],["Open ports",s.open_ports],["Changes",s.changes],
+    ["Anomalies",s.anomalies],["Top risk",s.top_risk],["Alerts",s.alerts||0],["Scan (s)",s.duration_seconds]
+  ].map(([k,v])=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  const bar=document.getElementById("alertbar");
+  if(d.alerts&&d.alerts.length){
+    bar.style.display="block";
+    bar.innerHTML="&#9888; <b>High-risk change detected:</b> "+
+      d.alerts.map(a=>`${a.node} (${a.service}) risk ${a.risk}`).join(" &nbsp;•&nbsp; ");
+  }else{bar.style.display="none";}
+    renderRisk();
+  drawGraph(d.graph,d.risk_report||[],d.prev_graph||{"nodes":[],"links":[]});
+}
+
+function tlsMap(){
+  const m={};if(!LAST||!LAST.recon)return m;
+  (LAST.recon.assets||[]).forEach(a=>(a.ports||[]).forEach(p=>{
+    if(p.tls)m[a.ip+":"+p.port]=p.tls;}));
+  return m;
+}
+
+function renderRisk(){
+  if(!LAST)return;
+  const q=document.getElementById("riskSearch").value.toLowerCase();
+  const tls=tlsMap();
+  const tb=document.querySelector("#risk tbody");
+  const rows=(LAST.risk_report||[]).filter(r=>{
+    const okBand=sevMode==="all"?true:band(r.composite_risk)===sevMode;
+    const okQ=!q||(r.node+" "+(r.service||"")).toLowerCase().includes(q);
+    return okBand&&okQ;
+  });
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="5" class="muted">No matching services.</td></tr>`;return;}
+  tb.innerHTML=rows.map((r,i)=>{
+    const cd=(LAST.cve_details||{})[r.node];
+    const c=r.contributions||{};
+    const cves=cd&&cd.cves?cd.cves.map(x=>`<span class="cve">${x.id} (${x.cvss})</span>`).join(""):
+      '<span class="muted">No CVE matched for this service.</span>';
+    const barRow=(label,val)=>`<div>${label} <span class="muted">${(val||0).toFixed(3)}</span>
+      <div class="bar"><i style="width:${Math.min(100,(val||0)*100/0.3)}%"></i></div></div>`;
+    const t=tls[r.node];
+    const tlsBlock=t?`<div class="tls"><b>TLS:</b> ${t.version||"?"} &nbsp; issuer: ${t.issuer||"?"}
+      &nbsp; expires: ${t.not_after||"?"} ${t.days_to_expiry!=null?`(${t.days_to_expiry} days)`:""}
+      ${t.self_signed?' &nbsp; <span class="anom">self-signed</span>':''}</div>`:"";
+    return `<tr class="risk-row" data-i="${i}">
+      <td><span class="pill" style="background:${colour(r.composite_risk)};color:${pillText(r.composite_risk)}">${r.composite_risk}</span></td>
+      <td>${r.node}</td><td>${r.service||""}</td><td>${r.cvss_base}</td>
+      <td class="${r.is_anomaly?'anom':''}">${r.anomaly_score}</td></tr>
+    <tr class="detail" id="d${i}" style="display:none"><td colspan="5">
+      <b>Score:</b> ${r.cvss_base} base &times; ${r.multiplier} context = <b>${r.composite_risk}</b>
+      ${r.product?`<div class="muted" style="margin:4px 0">Banner: ${r.product}</div>`:""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin:8px 0">
+        ${barRow("Centrality",c.centrality)}${barRow("Exposure",c.exposure)}
+        ${barRow("Rarity",c.rarity)}${barRow("Propagation",c.propagation)}
+      </div>
+      <b>Matched CVEs:</b><div style="margin-top:4px">${cves}</div>${tlsBlock}</td></tr>`;
+  }).join("");
+  tb.querySelectorAll(".risk-row").forEach(tr=>tr.addEventListener("click",()=>{
+    const d=document.getElementById("d"+tr.dataset.i);
+    d.style.display=d.style.display==="none"?"table-row":"none";
+  }));
+}
+
+async function fetchHistory(t){
+  const r=await fetch(API+"/api/history/"+encodeURIComponent(t));
+  const d=await r.json();return d.scans||[];
+}
+
+async function loadTrend(t){
+  const scans=await fetchHistory(t);
+  const labels=scans.map(s=>"#"+s.scan_id);
+  const ctx=document.getElementById("trend");
+  if(trendChart)trendChart.destroy();
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  trendChart=new Chart(ctx,{type:"line",data:{labels,datasets:[
+    {label:"Open ports",data:scans.map(s=>s.open_ports),borderColor:css("--accent3"),
+      backgroundColor:css("--accent3")+"33",tension:.25,fill:true,yAxisID:"y"},
+    {label:"Changes",data:scans.map(s=>s.changes),borderColor:css("--gold"),
+      backgroundColor:css("--gold")+"22",tension:.25,fill:true,yAxisID:"y"},
+    {label:"Top risk",data:scans.map(s=>s.max_risk),borderColor:css("--accent"),
+      borderDash:[6,4],backgroundColor:"transparent",tension:.25,fill:false,yAxisID:"y1"}
+  ]},options:{responsive:true,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{labels:{color:css("--muted")}}},
+    scales:{x:{ticks:{color:css("--muted")},grid:{color:css("--line")}},
+      y:{position:"left",ticks:{color:css("--muted")},grid:{color:css("--line")},beginAtZero:true,
+         title:{display:true,text:"ports / changes",color:css("--muted")}},
+      y1:{position:"right",min:0,max:10,ticks:{color:css("--muted")},grid:{drawOnChartArea:false},
+          title:{display:true,text:"risk",color:css("--muted")}}}}});
+}
+
+async function loadFeed(t){
+  const r=await fetch(API+"/api/changes/"+encodeURIComponent(t));
+  const d=await r.json();const feed=document.getElementById("feed");
+  feed.innerHTML=(d.changes||[]).map(c=>`<div class="ev">
+    <span class="tag ${c.event_type}">${c.event_type}</span>
+    <span>${c.detail}</span><span class="when">${fmt(c.detected_at)}</span></div>`).join("")
+    || `<span class="muted">No changes recorded.</span>`;
+}
+
+async function loadScanList(t){
+  const scans=await fetchHistory(t);
+  const opt=s=>`<option value="${s.scan_id}">#${s.scan_id} - ${fmt(s.started_at)} (${s.open_ports}p)</option>`;
+  const A=document.getElementById("scanA"),B=document.getElementById("scanB");
+  A.innerHTML=scans.map(opt).join("");B.innerHTML=scans.map(opt).join("");
+  if(scans.length>=2){A.value=scans[scans.length-2].scan_id;B.value=scans[scans.length-1].scan_id;}
+}
+
+async function loadTargets(){
+  try{
+    const r=await fetch(API+"/api/targets");const d=await r.json();
+    const sel=document.getElementById("targetSelect");
+    const authorised=(d.authorised||[]);
+    const known=(d.known||[]).map(k=>k.hostname);
+    // authorised allow-list first, then any scanned targets not already listed
+    const all=[...authorised, ...known.filter(h=>!authorised.includes(h.toLowerCase()))];
+    sel.innerHTML='<option value="">— select target —</option>'+
+      all.map(h=>`<option value="${h}">${h}</option>`).join("");
+  }catch(e){}
+}
+
+async function switchTarget(t){
+  if(!t)return;
+  document.getElementById("target").value=t;
+  await Promise.all([loadTrend(t),loadFeed(t),loadScanList(t)]);
+  try{
+    const r=await fetch(API+"/api/latest/"+encodeURIComponent(t));
+    if(r.ok){LAST=await r.json();render(LAST);}
+    else{document.querySelector("#risk tbody").innerHTML=
+      `<tr><td colspan="5" class="muted">Run a scan to see current graph & risk.</td></tr>`;}
+  }catch(e){}
+}
+
+/* ---- Scan development sheet ---- */
+function deltaCell(cur,prev,invertGood){
+  if(prev===undefined||prev===null)return `${cur}`;
+  const diff=+(cur-prev).toFixed(2);
+  if(diff===0)return `${cur} <span class="delta flat">&#8213;</span>`;
+  const up=diff>0;
+  const cls=up?"up":"down";
+  const arrow=up?"&#9650;":"&#9660;";
+  return `${cur} <span class="delta ${cls}">${arrow}${Math.abs(diff)}</span>`;
+}
+async function openSheet(){
+  const t=curTarget();
+  const scans=await fetchHistory(t);
+  document.getElementById("sheetSub").textContent =
+    scans.length ? `${t} — ${scans.length} scan(s), oldest to newest. Arrows show change vs the previous scan.`
+                 : `No scans stored yet for ${t}. Run a scan first.`;
+  const tb=document.querySelector("#sheetTable tbody");
+  tb.innerHTML=scans.map((s,i)=>{
+    const prev=i>0?scans[i-1]:null;
+    const rkCol=colour(s.max_risk||0), rkTxt=pillText(s.max_risk||0);
+    return `<tr>
+      <td>#${s.scan_id}</td>
+      <td>${fmt(s.started_at)}</td>
+      <td>${deltaCell(s.assets, prev&&prev.assets)}</td>
+      <td>${deltaCell(s.open_ports, prev&&prev.open_ports)}</td>
+      <td>${s.changes}</td>
+      <td><span class="rk" style="background:${rkCol};color:${rkTxt}">${s.max_risk}</span>
+          ${prev?`<span class="delta ${(s.max_risk-prev.max_risk)>0?'up':(s.max_risk-prev.max_risk)<0?'down':'flat'}">${
+            (s.max_risk-prev.max_risk)>0?'&#9650;':(s.max_risk-prev.max_risk)<0?'&#9660;':'&#8213;'}</span>`:''}</td>
+      <td>${s.duration_seconds}s</td></tr>`;
+  }).join("") || `<tr><td colspan="7" class="muted">Nothing to show.</td></tr>`;
+  document.getElementById("backdrop").classList.add("open");
+}
+function closeSheet(){document.getElementById("backdrop").classList.remove("open");}
+
+async function runDiff(){
+  const t=curTarget();
+  const a=document.getElementById("scanA").value,b=document.getElementById("scanB").value;
+  if(!a||!b)return;
+  const r=await fetch(`${API}/api/diff/${encodeURIComponent(t)}?a=${a}&b=${b}`);
+  const d=await r.json();const box=document.getElementById("diff");
+  if(!r.ok){box.innerHTML=`<span class="muted">${d.error||"diff failed"}</span>`;return;}
+  box.innerHTML=(d.changes||[]).map(c=>`<div class="ev">
+    <span class="tag ${c.event_type}">${c.event_type}</span><span>${c.detail}</span></div>`).join("")
+    || `<span class="muted">No differences between scan #${a} and #${b}.</span>`;
+}
+
+function exportCSV(){
+  if(!LAST||!LAST.risk_report){alert("Run a scan first.");return;}
+  const head=["composite_risk","node","service","cvss_base","multiplier","anomaly_score","is_anomaly","product"];
+  const rows=LAST.risk_report.map(r=>head.map(k=>`"${(r[k]!==undefined?r[k]:"")}"`).join(","));
+  const csv=[head.join(","),...rows].join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=`arguspredict_${LAST.target}_risk.csv`;a.click();
+}
+
+function downloadPDF(){
+  if(!LAST){alert("Run a scan first.");return;}
+  window.open(API+"/api/report/"+encodeURIComponent(LAST.target),"_blank");
+}
+
+async function schedStart(){
+  const t=curTarget(),hours=parseFloat(document.getElementById("schedHours").value)||24;
+  const r=await fetch(API+"/api/schedule/start",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({target:t,hours})});
+  const d=await r.json();if(!r.ok){alert(d.error||"could not start");return;}
+  await pollSched();await Promise.all([loadTrend(t),loadFeed(t),loadScanList(t)]);
+}
+async function schedStop(){
+  const t=curTarget();
+  await fetch(API+"/api/schedule/stop",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({target:t})});
+  await pollSched();
+}
+async function pollSched(){
+  try{
+    const r=await fetch(API+"/api/schedule");const d=await r.json();
+    const el=document.getElementById("schedStatus");
+    if(d.jobs&&d.jobs.length){
+      el.innerHTML=d.jobs.map(j=>`Scanning <b>${j.target}</b> — next: ${fmt(j.next_run)}`).join(" | ");
+    }else{el.textContent="No scheduled scans.";}
+  }catch(e){}
+}
+
+function drawGraph(graph,risk,prevGraph){
+  prevGraph=prevGraph||{nodes:[],links:[]};
+  const showDiff=document.getElementById("diffToggle").checked && (prevGraph.nodes||[]).length>0;
+  const riskByNode={};risk.forEach(r=>riskByNode[r.node]=r.composite_risk);
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const curIds=new Set((graph.nodes||[]).map(n=>n.id));
+  const prevIds=new Set((prevGraph.nodes||[]).map(n=>n.id));
+
+  function status(id){
+    if(!showDiff)return "same";
+    const inCur=curIds.has(id), inPrev=prevIds.has(id);
+    if(inCur&&!inPrev)return "added";
+    if(!inCur&&inPrev)return "removed";
+    return "same";
+  }
+
+  const merged=[...(graph.nodes||[]).map(n=>({...n}))];
+  if(showDiff){
+    (prevGraph.nodes||[]).forEach(n=>{if(!curIds.has(n.id))merged.push({...n});});
+  }
+  merged.forEach(n=>{n.risk=riskByNode[n.id]||0;n.status=status(n.id);});
+
+  const key=l=>{const a=(l.source.id||l.source),b=(l.target.id||l.target);
+    return a<b?a+"|"+b:b+"|"+a;};
+  const lmap={};
+  (graph.links||[]).forEach(l=>{lmap[key(l)]={...l,lstatus:"same"};});
+  if(showDiff){
+    (prevGraph.links||[]).forEach(l=>{const k=key(l);
+      if(!lmap[k])lmap[k]={...l,lstatus:"removed"};});
+    (graph.links||[]).forEach(l=>{const k=key(l);
+      if(!(prevGraph.links||[]).some(p=>key(p)===k))lmap[k].lstatus="added";});
+  }
+  const links=Object.values(lmap);
+  const nodeById=Object.fromEntries(merged.map(n=>[n.id,n]));
+  links.forEach(l=>{l.source=nodeById[l.source.id||l.source]||l.source;
+    l.target=nodeById[l.target.id||l.target]||l.target;});
+
+  const svg=d3.select("#graph");svg.selectAll("*").remove();
+  const W=svg.node().clientWidth,H=svg.node().clientHeight;
+  const sim=d3.forceSimulation(merged)
+    .force("link",d3.forceLink(links).id(d=>d.id).distance(60))
+    .force("charge",d3.forceManyBody().strength(-180))
+    .force("center",d3.forceCenter(W/2,H/2));
+
+  const link=svg.append("g").selectAll("line").data(links).join("line")
+    .attr("stroke",d=>d.lstatus==="added"?css("--gold"):d.lstatus==="removed"?"#6b565a":css("--line"))
+    .attr("stroke-width",d=>d.lstatus==="same"?1:1.6)
+    .attr("stroke-dasharray",d=>d.lstatus==="removed"?"4 4":null)
+    .attr("opacity",d=>d.lstatus==="removed"?.6:1);
+
+  function fill(d){
+    if(d.status==="removed")return "#3a2b2e";
+    if(d.kind==="port")return colour(d.risk);
+    if(d.kind==="asset")return css("--accent3");
+    return css("--ink");
+  }
+  const node=svg.append("g").selectAll("circle").data(merged).join("circle")
+    .attr("r",d=>d.kind==="port"?Math.max(6,4+d.risk):d.kind==="asset"?9:12)
+    .attr("fill",fill)
+    .attr("stroke",d=>d.status==="added"?css("--gold"):d.status==="removed"?"#8a6d72":css("--graph"))
+    .attr("stroke-width",d=>d.status==="same"?1.5:3)
+    .attr("stroke-dasharray",d=>d.status==="removed"?"3 3":null)
+    .attr("opacity",d=>d.status==="removed"?.55:1)
+    .style("cursor","pointer")
+    .call(d3.drag()
+      .on("start",(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y;})
+      .on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y;})
+      .on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
+  node.on("mouseover",function(){d3.select(this).transition().duration(120).attr("stroke-width",4);})
+      .on("mouseout",function(){d3.select(this).transition().duration(120)
+        .attr("stroke-width",function(dd){return dd.status==="same"?1.5:3;});});
+  node.append("title").text(d=>`${d.id}\n${d.service||d.kind}`+
+    (d.status!=="same"?`\n(${d.status} since last scan)`:"")+`\nrisk ${d.risk}`);
+
+  const label=svg.append("g").selectAll("text").data(merged).join("text")
+    .text(d=>d.kind==="port"?d.id.split(":").pop():d.id)
+    .attr("font-size",10).attr("fill",css("--muted")).attr("dx",10).attr("dy",3);
+
+  sim.on("tick",()=>{
+    link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y)
+        .attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+    node.attr("cx",d=>d.x).attr("cy",d=>d.y);
+    label.attr("x",d=>d.x).attr("y",d=>d.y);
+  });
+
+    const legend=document.getElementById("graphLegend");
+  if(showDiff){
+    const addedN=merged.filter(n=>n.status==="added").length;
+    const removedN=merged.filter(n=>n.status==="removed").length;
+    legend.innerHTML=`Compared with last scan: <b style="color:var(--gold)">${addedN} new</b>, `+
+      `<b style="color:#c98f95">${removedN} removed</b> &nbsp;•&nbsp; `+
+      '<span style="color:var(--gold)">&#9679; new</span> &nbsp; '+
+      '<span style="color:#8a6d72">&#9675; removed (dashed)</span> &nbsp; '+
+      '<span style="color:var(--muted)">&#9679; unchanged</span>'+
+      ((addedN+removedN===0)?' &nbsp;— <i>no structural change since last scan</i>':'');
+  }else{
+    legend.textContent="Node size ∝ risk; colour = severity band. Drag to explore.";
+  }
+}
+
+document.getElementById("scan").addEventListener("click",runScan);
+document.getElementById("csv").addEventListener("click",exportCSV);
+document.getElementById("pdf").addEventListener("click",downloadPDF);
+document.getElementById("print").addEventListener("click",()=>window.print());
+document.getElementById("diffBtn").addEventListener("click",runDiff);
+document.getElementById("riskSearch").addEventListener("input",renderRisk);
+document.getElementById("targetSelect").addEventListener("change",e=>switchTarget(e.target.value));
+document.getElementById("schedStart").addEventListener("click",schedStart);
+document.getElementById("schedStop").addEventListener("click",schedStop);
+document.getElementById("sheetBtn").addEventListener("click",openSheet);
+document.getElementById("diffToggle").addEventListener("change",()=>{
+  if(LAST)drawGraph(LAST.graph,LAST.risk_report||[],LAST.prev_graph||{"nodes":[],"links":[]});
+});document.getElementById("sheetBtn2").addEventListener("click",openSheet);
+document.getElementById("sheetClose").addEventListener("click",closeSheet);
+document.getElementById("backdrop").addEventListener("click",e=>{if(e.target.id==="backdrop")closeSheet();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet();});
+document.getElementById("sevFilter").addEventListener("click",e=>{
+  if(e.target.dataset.b){sevMode=e.target.dataset.b;
+    document.querySelectorAll("#sevFilter button").forEach(b=>b.classList.toggle("on",b===e.target));
+    renderRisk();}
+});
+loadTargets();pollSched();
+</script>
+</body>
+</html>

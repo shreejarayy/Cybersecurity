@@ -1,41 +1,31 @@
-# Argus ASM — Python dependencies
-# Install with: pip install -r requirements.txt
+# Core
+SQLAlchemy>=2.0
+networkx>=3.0
+scikit-learn>=1.3
+requests>=2.31
 
-# ------------------------------------------------------------------ #
-# Recon modules
-# ------------------------------------------------------------------ #
-dnspython==2.6.1          # DNS enumeration
-python-whois==0.9.4       # WHOIS lookups
-requests==2.32.3          # HTTP banner grabbing
-urllib3==2.2.2            # HTTP internals (suppress InsecureWarning)
+# Reconnaissance
+dnspython>=2.4
+python-whois>=0.9
 
-# ------------------------------------------------------------------ #
-# Database
-# ------------------------------------------------------------------ #
-sqlalchemy==2.0.31        # ORM + query builder
-psycopg2-binary==2.9.9    # PostgreSQL driver (binary = no compile needed)
+# API
+reportlab>=4.0
+Flask>=3.0
+flask-cors>=4.0
 
-# ------------------------------------------------------------------ #
-# Config
-# ------------------------------------------------------------------ #
-pydantic-settings==2.3.4  # .env loading + validation
-python-dotenv==1.0.1      # .env file support
+# Config & scheduling
+python-dotenv>=1.0
+APScheduler>=3.10
 
-# ------------------------------------------------------------------ #
-# CLI output
-# ------------------------------------------------------------------ #
-rich==13.7.1              # Formatted terminal tables and panels
+# Optional distributed task queue (production; not required for demos)
+# celery>=5.4
+# redis>=5.0
 
-# ------------------------------------------------------------------ #
-# Week 2 — add when ready
-# ------------------------------------------------------------------ #
-# celery==5.4.0
-# redis==5.0.7
-# apscheduler==3.10.4
+# Testing
+pytest>=8.0
 
-# ------------------------------------------------------------------ #
-# Week 5-7 — add when ready
-# ------------------------------------------------------------------ #
-# scikit-learn==1.5.1
-# sentence-transformers==3.0.1
-# numpy==1.26.4
+# PostgreSQL driver (only needed if DATABASE_URL points at PostgreSQL)
+# psycopg2-binary>=2.9
+
+gunicorn>=21.0
+psycopg2-binary>=2.9
